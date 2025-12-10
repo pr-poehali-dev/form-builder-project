@@ -1,0 +1,34 @@
+{
+  "tests": [
+    {
+      "name": "List all forms",
+      "method": "GET",
+      "path": "/?action=list",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "forms": "array"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Create new form",
+      "method": "POST",
+      "path": "/?action=create",
+      "body": {
+        "id": "test-form-1",
+        "title": "Test Form",
+        "description": "Test Description",
+        "fields": [],
+        "customization": {
+          "primaryColor": "#9b87f5",
+          "secondaryColor": "#D946EF"
+        }
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "success": true
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

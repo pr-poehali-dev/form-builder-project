@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,8 @@ import Icon from '@/components/ui/icon';
 import FormEditor from '@/components/FormEditor';
 import FormsList from '@/components/FormsList';
 import FormPreview from '@/components/FormPreview';
+import { api } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
 
 export interface FormField {
   id: string;
@@ -34,26 +36,35 @@ export interface Form {
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('forms');
-  const [forms, setForms] = useState<Form[]>([
-    {
-      id: '1',
-      title: 'Форма обратной связи',
-      description: 'Соберите отзывы от ваших клиентов',
-      fields: [
-        { id: 'f1', type: 'text', label: 'Имя', placeholder: 'Введите ваше имя', required: true },
-        { id: 'f2', type: 'email', label: 'Email', placeholder: 'example@mail.com', required: true },
-        { id: 'f3', type: 'textarea', label: 'Сообщение', placeholder: 'Ваш отзыв...', required: true },
-      ],
-      customization: {
-        primaryColor: '#9b87f5',
-        secondaryColor: '#D946EF',
-      },
-      createdAt: new Date(),
-      responsesCount: 12,
-    },
-  ]);
+  const [forms, setForms] = useState<Form[]>([]);
   const [selectedForm, setSelectedForm] = useState<Form | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    loadForms();
+  }, []);
+
+  const loadForms = async () => {
+    try {
+      setLoading(true);
+      const data = await api.listForms();
+      setForms(data.map(f => ({
+        ...f,
+        createdAt: f.createdAt ? new Date(f.createdAt) : new Date(),
+        responsesCount: f.responseCount || 0,
+      })));
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось загрузить формы',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCreateForm = () => {
     const newForm: Form = {
@@ -73,10 +84,23 @@ const Index = () => {
     setIsEditing(true);
   };
 
-  const handleSaveForm = (updatedForm: Form) => {
-    setForms(forms.map(f => f.id === updatedForm.id ? updatedForm : f));
-    setSelectedForm(updatedForm);
-    setIsEditing(false);
+  const handleSaveForm = async (updatedForm: Form) => {
+    try {
+      await api.saveForm(updatedForm);
+      await loadForms();
+      setSelectedForm(updatedForm);
+      setIsEditing(false);
+      toast({
+        title: 'Успех',
+        description: 'Форма сохранена',
+      });
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось сохранить форму',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleDeleteForm = (formId: string) => {
@@ -129,7 +153,12 @@ const Index = () => {
           </TabsList>
 
           <TabsContent value="forms" className="animate-fade-in">
-            {isEditing && selectedForm ? (
+            {loading ? (
+              <Card className="p-8 text-center bg-white/80 backdrop-blur-sm">
+                <Icon name="Loader2" size={40} className="mx-auto mb-4 animate-spin text-primary" />
+                <p className="text-muted-foreground">Загрузка форм...</p>
+              </Card>
+            ) : isEditing && selectedForm ? (
               <div className="grid lg:grid-cols-2 gap-6">
                 <FormEditor 
                   form={selectedForm} 
